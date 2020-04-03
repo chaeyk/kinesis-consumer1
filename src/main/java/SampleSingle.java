@@ -30,25 +30,11 @@
  * permissions and limitations under the License.
  */
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.UUID;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-
-import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.RandomUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
-
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 import software.amazon.awssdk.core.SdkBytes;
@@ -62,21 +48,27 @@ import software.amazon.kinesis.common.KinesisClientUtil;
 import software.amazon.kinesis.coordinator.Scheduler;
 import software.amazon.kinesis.exceptions.InvalidStateException;
 import software.amazon.kinesis.exceptions.ShutdownException;
-import software.amazon.kinesis.lifecycle.events.InitializationInput;
-import software.amazon.kinesis.lifecycle.events.LeaseLostInput;
-import software.amazon.kinesis.lifecycle.events.ProcessRecordsInput;
-import software.amazon.kinesis.lifecycle.events.ShardEndedInput;
-import software.amazon.kinesis.lifecycle.events.ShutdownRequestedInput;
-
+import software.amazon.kinesis.lifecycle.events.*;
 import software.amazon.kinesis.processor.ShardRecordProcessor;
 import software.amazon.kinesis.processor.ShardRecordProcessorFactory;
 import software.amazon.kinesis.retrieval.polling.PollingConfig;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.UUID;
+import java.util.concurrent.*;
 
 /**
  * This class will run a simple app that uses the KCL to read data and uses the AWS SDK to publish data.
  * Before running this program you must first create a Kinesis stream through the AWS console or AWS SDK.
  */
 public class SampleSingle {
+
+    private static final String AWS_PROFILE_NAME = "chaeyk";
+    private static final String AWS_REGION = "ap-northeast-1";
+    private static final String KINESIS_STREAM_NAME = "chaeyk-test";
+    private static final String APPLICATION_NAME = "consumer1"; // 다른 consumer와 겹치지 않게 아무거나 쓴다.
 
     private static final Logger log = LoggerFactory.getLogger(SampleSingle.class);
 
@@ -85,7 +77,7 @@ public class SampleSingle {
      * Verifies valid inputs and then starts running the app.
      */
     public static void main(String... args) {
-        new SampleSingle("chaeyk-test", "consumer1", "ap-northeast-2").run();
+        new SampleSingle(KINESIS_STREAM_NAME, APPLICATION_NAME, AWS_REGION).run();
     }
 
     private final String streamName;
@@ -101,7 +93,7 @@ public class SampleSingle {
     private SampleSingle(String streamName, String applicationName, String region) {
         this.streamName = streamName;
         this.region = Region.of(region);
-        this.credentialsProvider = ProfileCredentialsProvider.builder().profileName("kinesis-test").build();
+        this.credentialsProvider = ProfileCredentialsProvider.builder().profileName(AWS_PROFILE_NAME).build();
         this.kinesisClient = KinesisClientUtil.createKinesisAsyncClient(KinesisAsyncClient.builder().credentialsProvider(credentialsProvider).region(this.region));
     }
 
@@ -185,7 +177,6 @@ public class SampleSingle {
      * Sends a single record of dummy data to Kinesis.
      */
     private void publishRecord() {
-        /*
         PutRecordRequest request = PutRecordRequest.builder()
                 .partitionKey(RandomStringUtils.randomAlphabetic(5, 20))
                 .streamName(streamName)
@@ -198,7 +189,6 @@ public class SampleSingle {
         } catch (ExecutionException e) {
             log.error("Exception while sending data to Kinesis. Will try again next cycle.", e);
         }
-         */
     }
 
     private static class SampleRecordProcessorFactory implements ShardRecordProcessorFactory {
